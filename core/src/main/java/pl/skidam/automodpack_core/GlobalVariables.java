@@ -28,7 +28,8 @@ public class GlobalVariables {
     public static Jsons.ServerConfigFieldsV2 serverConfig;
     public static Jsons.ClientConfigFieldsV2 clientConfig;
     public static Jsons.KnownHostsFields knownHosts;
-    public static final Path automodpackDir = Path.of("automodpack");
+    public static final Path automodpackDir =
+        Path.of(System.getProperty("user.dir")).resolve("automodpack");
     public static final Path hostModpackDir = automodpackDir.resolve("host-modpack");
     // TODO More server modpacks
     // Main - required
@@ -38,7 +39,7 @@ public class GlobalVariables {
     public static Path hostModpackContentFile = hostModpackDir.resolve("automodpack-content.json");
     public static Path serverConfigFile = automodpackDir.resolve("automodpack-server.json");
     public static Path serverCoreConfigFile = automodpackDir.resolve("automodpack-core.json");
-    public static final Path privateDir = automodpackDir.resolve(".private");
+    public static final Path privateDir = automodpackDir.resolve("private");
     public static final Path serverSecretsFile = privateDir.resolve("automodpack-secrets.json");
     public static final Path knownHostsFile = privateDir.resolve("automodpack-known-hosts.json");
     public static final Path serverCertFile = privateDir.resolve("cert.crt");

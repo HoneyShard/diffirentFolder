@@ -5,6 +5,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModDependency;
 import net.fabricmc.loader.api.metadata.ModEnvironment;
+import pl.skidam.automodpack_core.GlobalVariables;
 import pl.skidam.automodpack_core.loader.LoaderManagerService;
 import pl.skidam.automodpack_core.utils.CustomFileUtils;
 import pl.skidam.automodpack_core.utils.FileInspection;
@@ -17,6 +18,7 @@ import static pl.skidam.automodpack_core.GlobalVariables.LOGGER;
 
 @SuppressWarnings("unused")
 public class LoaderManager implements LoaderManagerService {
+
 
     @Override
     public ModPlatform getPlatformType() {
@@ -33,7 +35,6 @@ public class LoaderManager implements LoaderManagerService {
 
     @Override
     public Collection<FileInspection.Mod> getModList() {
-
         Collection<ModContainer> mods = FabricLoader.getInstance().getAllMods();
 
         if (!modList.isEmpty() && lastLoadingModListSize == mods.size()) {
@@ -47,24 +48,22 @@ public class LoaderManager implements LoaderManagerService {
             try {
                 String modID = info.getMetadata().getId();
                 Path path = getModPath(modID);
-                if (path == null || path.toString().isEmpty()) // If we cant get the path, we skip the mod, its probably JiJed, we dont need it in the list
-                    continue;
+                if (path == null || path.toString().isEmpty()) continue;
 
                 String hash = CustomFileUtils.getHash(path);
-                if (hash == null)
-                    continue;
+                if (hash == null) continue;
 
                 Set<String> providesIDs = new HashSet<>(info.getMetadata().getProvides());
-                List<String> dependencies = info.getMetadata().getDependencies().stream().filter(d -> d.getKind().equals(ModDependency.Kind.DEPENDS)).map(ModDependency::getModId).toList();
+                List<String> dependencies = info.getMetadata().getDependencies().stream()
+                        .filter(d -> d.getKind() == ModDependency.Kind.DEPENDS)
+                        .map(ModDependency::getModId)
+                        .toList();
 
                 FileInspection.Mod mod = new FileInspection.Mod(
-                        modID,
-                        hash,
-                        providesIDs,
+                        modID, hash, providesIDs,
                         info.getMetadata().getVersion().getFriendlyString(),
-                        path,
-                        getModEnvironment(modID),
-                        dependencies);
+                        path, getModEnvironment(modID), dependencies
+                );
 
                 modList.add(mod);
             } catch (Exception ignored) {}
@@ -75,18 +74,20 @@ public class LoaderManager implements LoaderManagerService {
 
     @Override
     public String getLoaderVersion() {
-        Optional<ModContainer> modContainer = FabricLoader.getInstance().getModContainer("fabricloader");
-        return modContainer.map(container -> container.getMetadata().getVersion().getFriendlyString()).orElse(null);
+        return FabricLoader.getInstance()
+                .getModContainer("fabricloader")
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                .orElse(null);
     }
 
     private Path getModPath(String modId) {
         if (!isModLoaded(modId)) return null;
 
         try {
-            for (ModContainer modContainer : FabricLoader.getInstance().getAllMods()) {
-                if (modContainer.getMetadata().getId().equals(modId)) {
-                    FileSystem fileSys = modContainer.getRootPaths().get(0).getFileSystem();
-                    return Path.of(fileSys.toString());
+            for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
+                if (container.getMetadata().getId().equals(modId)) {
+                    FileSystem fs = container.getRootPaths().get(0).getFileSystem();
+                    return Path.of(fs.toString());
                 }
             }
         } catch (Exception ignored) {}
@@ -97,16 +98,17 @@ public class LoaderManager implements LoaderManagerService {
 
     @Override
     public EnvironmentType getEnvironmentType() {
-        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
-            return EnvironmentType.CLIENT;
-        } else {
-            return EnvironmentType.SERVER;
-        }
+        return FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT
+                ? EnvironmentType.CLIENT
+                : EnvironmentType.SERVER;
     }
 
     @Override
     public String getModVersion(String modId) {
-        return FabricLoader.getInstance().getModContainer(modId).isPresent() ? FabricLoader.getInstance().getModContainer(modId).get().getMetadata().getVersion().getFriendlyString() : null;
+        return FabricLoader.getInstance()
+                .getModContainer(modId)
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                .orElse(null);
     }
 
     @Override
@@ -115,17 +117,13 @@ public class LoaderManager implements LoaderManagerService {
     }
 
     private EnvironmentType getModEnvironment(String modId) {
-        var container = FabricLoader.getInstance().getModContainer(modId);
-        if (container.isEmpty()) {
-            return EnvironmentType.UNIVERSAL;
-        }
-        ModEnvironment env = container.get().getMetadata().getEnvironment();
-        if (env == ModEnvironment.CLIENT) {
-            return EnvironmentType.CLIENT;
-        } else if (env == ModEnvironment.SERVER) {
-            return EnvironmentType.SERVER;
-        } else {
-            return EnvironmentType.UNIVERSAL;
-        }
+        return FabricLoader.getInstance()
+                .getModContainer(modId)
+                .map(c -> switch (c.getMetadata().getEnvironment()) {
+                    case CLIENT -> EnvironmentType.CLIENT;
+                    case SERVER -> EnvironmentType.SERVER;
+                    default -> EnvironmentType.UNIVERSAL;
+                })
+                .orElse(EnvironmentType.UNIVERSAL);
     }
 }
